@@ -1,0 +1,10 @@
+test_rft_client_util
+test_rft_client_util.o
+rft_client
+rft_server
+*.o
+out/nm
+out/wt
+out*
+*.out
+
