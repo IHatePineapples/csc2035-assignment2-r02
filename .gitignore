@@ -7,4 +7,5 @@ out/nm
 out/wt
 out*
 *.out
+.vscode
 
