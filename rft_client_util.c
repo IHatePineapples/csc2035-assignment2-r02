@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <math.h>
 #include "rft_client_logging.h"
+#include "rft_client_util.h"
 
 /* 
  * is_corrupted - returns true with the given probability 
@@ -226,6 +227,42 @@ void set_socket_timeout(protocol_t* proto) {
  *  - Make sure you check the return values of system calls such as 
  *      socket and inet_aton
  */
-void set_udp_socket(protocol_t* proto) {  
+void set_udp_socket(protocol_t* proto) {
+    if (!proto) proto->err_msg = "hellO"; // FIX PLS
+    char* server_addr = proto->server_addr;
+    uint16_t port = proto->server_port;
+
+    /* create a socket */
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0); 
+
+    if (sockfd < 0) {
+        return;
+
+    }
+    if (port < PORT_MIN || port > PORT_MAX) 
+        return;
+    
+
+    /* set up address structures */
+    struct sockaddr_in server = proto->server;
+    //struct sockaddr_in client;
+    socklen_t sock_len = (socklen_t) sizeof(struct sockaddr_in); 
+    memset(&server, 0, sock_len);
+    //memset(&client, 0, sock_len);
+    
+    /* Fill in the server address structure */
+    server.sin_family = AF_INET;
+    server.sin_port = htons(port);
+
+    
+    // set server address using inet_aton
+    if (!inet_aton(server_addr, &server.sin_addr)) {
+        return;
+    }
+    
+    /* bind/associate the socket with the server address */
+    //if(bind(sockfd, (struct sockaddr *) &server, sock_len))
+    proto->state=PS_TFR_READY;    
+
     return;
 } 
