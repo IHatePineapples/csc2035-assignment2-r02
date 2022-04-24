@@ -2,6 +2,7 @@
  * Replace the following string of 0s with your student number
  * 000000000
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -228,10 +229,14 @@ void set_socket_timeout(protocol_t* proto) {
  *      socket and inet_aton
  */
 void set_udp_socket(protocol_t* proto) {
-    if (!proto) proto->err_msg = "hellO"; // FIX PLS
+    if (!proto) 
+        return; // FIX PLS
     char* server_addr = proto->server_addr;
     uint16_t port = proto->server_port;
 
+    if (port < PORT_MIN || port > PORT_MAX) 
+        return;
+    
     /* create a socket */
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0); 
 
@@ -239,8 +244,6 @@ void set_udp_socket(protocol_t* proto) {
         return;
 
     }
-    if (port < PORT_MIN || port > PORT_MAX) 
-        return;
     
 
     /* set up address structures */
