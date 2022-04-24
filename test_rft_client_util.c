@@ -10,7 +10,7 @@
 #include "munit.h"
 #include "rft_client_util.h"
 
-#define TEST_PORT 20333
+#define TEST_PORT 20334
 #define TEST_PORT_ERR_LINE 13
 
 static MunitResult test_init_protocol(const MunitParameter params[], void* fixture);
