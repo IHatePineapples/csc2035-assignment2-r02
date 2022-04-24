@@ -2,7 +2,6 @@
  * Replace the following string of 0s with your student number
  * 000000000
  */
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
