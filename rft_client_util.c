@@ -2,11 +2,13 @@
  * Replace the following string of 0s with your student number
  * 000000000
  */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <math.h>
+#include <strings.h>
 #include "rft_client_logging.h"
 #include "rft_client_util.h"
 
@@ -230,21 +232,22 @@ void set_socket_timeout(protocol_t* proto) {
 void set_udp_socket(protocol_t* proto) {
     if (!proto) 
         return; // FIX PLS
-    char* server_addr = proto->server_addr;
+
     uint16_t port = proto->server_port;
 
-    if (port < PORT_MIN || port > PORT_MAX) 
-        return;
-    
+    int sockfd;
+    if (port < PORT_MIN || port > PORT_MAX){ 
+        proto->sockfd = -1;
+        }
     /* create a socket */
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0); 
-
-    if (sockfd < 0) {
-        return;
-
-    }
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0){
+        proto->sockfd = -1;
+        }
+    else {
+        proto->sockfd = sockfd;
+        }
     
-
     /* set up address structures */
     struct sockaddr_in server = proto->server;
     //struct sockaddr_in client;
@@ -252,19 +255,24 @@ void set_udp_socket(protocol_t* proto) {
     memset(&server, 0, sock_len);
     //memset(&client, 0, sock_len);
     
+    // set server address using inet_aton
+    char* server_addr = proto->server_addr;
+    if (!inet_aton(server_addr, &server.sin_addr)) {
+        close(sockfd); 
+        proto->sockfd = -1;
+    }
+    else{
+    proto->state=PS_TFR_READY;
+    }
+    
     /* Fill in the server address structure */
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
 
-    
-    // set server address using inet_aton
-    if (!inet_aton(server_addr, &server.sin_addr)) {
-        return;
-    }
-    
     /* bind/associate the socket with the server address */
     //if(bind(sockfd, (struct sockaddr *) &server, sock_len))
-    proto->state=PS_TFR_READY;    
+    //proto->state=PS_TFR_READY;
+    //proto->sockfd = sockfd; 
 
     return;
 } 
