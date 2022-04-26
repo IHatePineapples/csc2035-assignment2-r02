@@ -216,6 +216,7 @@ bool send_metadata(protocol_t* proto) {
  * See documentation in rft_client_util.h and the assignment specification
  */
 void set_socket_timeout(protocol_t* proto) {
+
     return;
 }
 
@@ -230,17 +231,14 @@ void set_socket_timeout(protocol_t* proto) {
  *      socket and inet_aton
  */
 void set_udp_socket(protocol_t* proto) {
-    if (!proto) 
-        return; // FIX PLS
-
     uint16_t port = proto->server_port;
 
-    if (port < PORT_MIN || port > PORT_MAX){ 
+    if (port < PORT_MIN || port > PORT_MAX) { 
         proto->sockfd = -1;
         }
     /* create a socket */
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0){
+    if (sockfd < 0) {
         proto->sockfd = -1;
         }
     else {
@@ -260,7 +258,7 @@ void set_udp_socket(protocol_t* proto) {
         close(sockfd); 
         proto->sockfd = -1;
     }
-    else{
+    else {
     proto->state=PS_TFR_READY;
     
     /* Fill in the server address structure */
