@@ -247,7 +247,6 @@ void set_udp_socket(protocol_t* proto) {
     if (port < PORT_MIN || port > PORT_MAX) { 
         proto->sockfd = -1;
         }
-    /* create a socket */
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         proto->sockfd = -1;
@@ -256,13 +255,11 @@ void set_udp_socket(protocol_t* proto) {
         proto->sockfd = sockfd;
         }
     
-    /* set up address structures */
     struct sockaddr_in server = proto->server;
     
     socklen_t sock_len = (socklen_t) sizeof(struct sockaddr_in); 
     memset(&server, 0, sock_len);
     
-    // set server address using inet_aton
     char* server_addr = proto->server_addr;
     if (!inet_aton(server_addr, &server.sin_addr)) {
         close(sockfd); 
@@ -271,7 +268,6 @@ void set_udp_socket(protocol_t* proto) {
     else {
     proto->state=PS_TFR_READY;
     
-    /* Fill in the server address structure */
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
     }
