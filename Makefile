@@ -2,7 +2,7 @@
 # make csc2035 assignment2 network project
 SHELL = /bin/sh
 
-CC ?= cc
+CC ?= clang
 
 CFLAGS := -Wall
 LDFLAGS =
