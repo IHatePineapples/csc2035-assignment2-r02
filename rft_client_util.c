@@ -2,6 +2,8 @@
  * Replace the following string of 0s with your student number
  * 000000000
  */
+#include <asm-generic/socket.h>
+#include <bits/types/struct_timeval.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +11,8 @@
 #include <errno.h>
 #include <math.h>
 #include <strings.h>
+#include <sys/socket.h>
+#include <time.h>
 #include "rft_client_logging.h"
 #include "rft_client_util.h"
 
@@ -215,8 +219,15 @@ bool send_metadata(protocol_t* proto) {
  *
  * See documentation in rft_client_util.h and the assignment specification
  */
-void set_socket_timeout(protocol_t* proto) {
+void set_socket_timeout(protocol_t* proto) {    
+    struct timeval tout;
+    tout.tv_sec = proto->timeout_sec;
+    tout.tv_usec = 0;
+    int sockopt = setsockopt(proto->sockfd, SOL_SOCKET,SO_RCVTIMEO , &tout , sizeof(struct sockaddr_in));
 
+    if (sockopt < 0){
+        exit_err_state(proto, PS_BAD_SOCKTOUT, __LINE__);
+    }
     return;
 }
 
@@ -247,10 +258,9 @@ void set_udp_socket(protocol_t* proto) {
     
     /* set up address structures */
     struct sockaddr_in server = proto->server;
-    //struct sockaddr_in client;
+    
     socklen_t sock_len = (socklen_t) sizeof(struct sockaddr_in); 
     memset(&server, 0, sock_len);
-    //memset(&client, 0, sock_len);
     
     // set server address using inet_aton
     char* server_addr = proto->server_addr;
