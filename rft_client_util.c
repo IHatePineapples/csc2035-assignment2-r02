@@ -211,7 +211,24 @@ void send_file_with_timeout(protocol_t* proto) {
  *      detects an error when sending an ACK
  */
 bool send_metadata(protocol_t* proto) {     
-    return false;
+    // test is succesful, running client directly is not. valve please fix :'/
+    int sockfd = proto->sockfd;
+
+    struct sockaddr_in server = proto->server;
+    metadata_t finf;
+    memset(&finf, 0, sizeof(metadata_t));
+    for (int i = 0; i < MAX_FILENAME_SIZE -1; i++) 
+        finf.name[i] = proto->out_fname[i];
+    
+    finf.size = proto->fsize;
+    finf.name[MAX_FILENAME_SIZE -1] = '\0';
+    ssize_t bytes = sendto(sockfd, &finf, sizeof(metadata_t), 0, 
+                         (struct sockaddr*) &server, 
+                         sizeof(struct sockaddr_in));
+                        
+    if (bytes != sizeof(metadata_t))
+        return false;  
+    return true;
 } 
   
 /* 
@@ -221,6 +238,7 @@ bool send_metadata(protocol_t* proto) {
  */
 void set_socket_timeout(protocol_t* proto) {    
     struct timeval tout;
+    memset(&tout, 0, sizeof(struct timeval));
     tout.tv_sec = proto->timeout_sec;
     tout.tv_usec = 0;
     int sockopt = setsockopt(proto->sockfd, SOL_SOCKET,SO_RCVTIMEO , &tout , sizeof(struct sockaddr_in));
