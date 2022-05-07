@@ -15,6 +15,7 @@
 #include <time.h>
 #include "rft_client_logging.h"
 #include "rft_client_util.h"
+#include "rft_util.h"
 
 /* 
  * is_corrupted - returns true with the given probability 
@@ -108,6 +109,15 @@ void init_protocol(protocol_t* proto) {
  * See documentation in rft_client_util.h and the assignment specification
  */
 void init_segment(protocol_t* proto, seg_type type, bool payload_only) {
+    segment_t *seg = type == ACK_SEG ? &proto->ack : &proto->data;
+
+    for (int i = 0; i < PAYLOAD_SIZE; i++)
+        seg->payload[i] = '\0';
+
+    if (!payload_only) 
+        seg->file_data = seg->checksum = seg->sq = seg->type = '\0';
+
+    seg->type = type;
     return;
 }
 
