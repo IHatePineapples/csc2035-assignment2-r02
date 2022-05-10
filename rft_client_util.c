@@ -130,6 +130,24 @@ void init_segment(protocol_t* proto, seg_type type, bool payload_only) {
  *  - you have to detect an error when reading from the proto's input file
  */
 void read_data(protocol_t* proto) {
+    if (proto->tfr_bytes == 0) return;
+    segment_t* data = &proto->data;
+    char payload[PAYLOAD_SIZE];
+
+    size_t bytes = fread(payload, sizeof(char), PAYLOAD_SIZE -1, proto->in_file);
+    if (bytes != PAYLOAD_SIZE -1 && bytes != proto->tfr_bytes)
+        exit_err_state(proto, PS_BAD_READ, __LINE__);
+    
+    strncpy(data->payload, payload, PAYLOAD_SIZE -1);
+    data->payload[PAYLOAD_SIZE-1] = '\0';
+
+    int trailling = PAYLOAD_SIZE - proto->tfr_bytes;
+    while (trailling > 0){
+        data->payload[PAYLOAD_SIZE -trailling] = '\0';
+        trailling--;
+    }
+    proto->tfr_bytes -= bytes;
+    data->file_data = bytes;
     return;
 }
 
