@@ -290,16 +290,15 @@ void set_socket_timeout(protocol_t* proto) {
 void set_udp_socket(protocol_t* proto) {
     uint16_t port = proto->server_port;
 
-    if (port < PORT_MIN || port > PORT_MAX) { 
+    if (port < PORT_MIN || port > PORT_MAX) 
         proto->sockfd = -1;
-        }
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
+    if (sockfd < 0) 
         proto->sockfd = -1;
-        }
-    else {
+        
+    else 
         proto->sockfd = sockfd;
-        }
+        
     
     struct sockaddr_in server = proto->server;
     
