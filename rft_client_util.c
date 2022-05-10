@@ -294,12 +294,10 @@ void set_udp_socket(protocol_t* proto) {
         proto->sockfd = -1;
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) 
-        proto->sockfd = -1;
-        
+        proto->sockfd = -1; 
     else 
         proto->sockfd = sockfd;
-        
-    
+   
     struct sockaddr_in server = proto->server;
     
     socklen_t sock_len = (socklen_t) sizeof(struct sockaddr_in); 
@@ -309,13 +307,10 @@ void set_udp_socket(protocol_t* proto) {
     if (!inet_aton(server_addr, &server.sin_addr)) {
         close(sockfd); 
         proto->sockfd = -1;
+        return;
     }
-    else {
     proto->state=PS_TFR_READY;
-    
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
-    }
-    
-    return;
+    return; 
 } 
