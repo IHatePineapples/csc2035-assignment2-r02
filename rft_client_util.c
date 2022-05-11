@@ -253,17 +253,15 @@ void send_file_with_timeout(protocol_t* proto) {
  *      detects an error when sending an ACK
  */
 bool send_metadata(protocol_t* proto) {     
-    // test is succesful, running client directly is not. valve please fix :'/
+    // test is succesful, running client directly is unsuccessful
     int sockfd = proto->sockfd;
 
     struct sockaddr_in server = proto->server;
     metadata_t finf;
     memset(&finf, 0, sizeof(metadata_t));
-    for (int i = 0; i < MAX_FILENAME_SIZE -1; i++) 
-        finf.name[i] = proto->out_fname[i];
+    strncpy(finf.name, proto->out_fname, MAX_FILENAME_SIZE);
     
     finf.size = proto->fsize;
-    finf.name[MAX_FILENAME_SIZE -1] = '\0';
     ssize_t bytes = sendto(sockfd, &finf, sizeof(metadata_t), 0, 
                          (struct sockaddr*) &server, 
                          sizeof(struct sockaddr_in));
@@ -302,29 +300,20 @@ void set_socket_timeout(protocol_t* proto) {
  *      socket and inet_aton
  */
 void set_udp_socket(protocol_t* proto) {
-    uint16_t port = proto->server_port;
 
-    if (port < PORT_MIN || port > PORT_MAX) 
+    if (proto->server_port < PORT_MIN || proto->server_port > PORT_MAX) 
         proto->sockfd = -1;
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) 
+    proto->sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (proto->sockfd < 0) 
         proto->sockfd = -1; 
-    else 
-        proto->sockfd = sockfd;
    
-    struct sockaddr_in server = proto->server;
-    
-    socklen_t sock_len = (socklen_t) sizeof(struct sockaddr_in); 
-    memset(&server, 0, sock_len);
-    
-    char* server_addr = proto->server_addr;
-    if (!inet_aton(server_addr, &server.sin_addr)) {
-        close(sockfd); 
+    if (!inet_aton(proto->server_addr, &proto->server.sin_addr)) {
+        close(proto->sockfd); 
         proto->sockfd = -1;
         return;
     }
     proto->state=PS_TFR_READY;
-    server.sin_family = AF_INET;
-    server.sin_port = htons(port);
+    proto->server.sin_family = AF_INET;
+    proto->server.sin_port = htons(proto->server_port);
     return; 
 } 
