@@ -173,7 +173,9 @@ void send_data(protocol_t* proto) {
     int sockfd = proto->sockfd;
     struct sockaddr_in server = proto->server;
     data.checksum = checksum(data.payload, strncmp(proto->tfr_mode, NORMAL_TFR_MODE,2) != 0);
-
+    if (strncmp(proto->tfr_mode,TIMEOUT_TFR_MODE,TFR_MODE_SIZE) == TFR_MODE_SIZE
+    && proto->loss_prob > (float) ((double)rand()/(double)RAND_MAX))
+        data.checksum--;
 
     ssize_t bytes = sendto(sockfd, &data, sizeof(segment_t),0,
         (struct sockaddr*) &server, sizeof(struct sockaddr_in));
