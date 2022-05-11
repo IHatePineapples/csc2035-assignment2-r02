@@ -132,24 +132,19 @@ void init_segment(protocol_t* proto, seg_type type, bool payload_only) {
  *  - you have to detect an error when reading from the proto's input file
  */
 void read_data(protocol_t* proto) {
-    if (proto->tfr_bytes == 0) return;
-    segment_t* data = &proto->data;
-    char payload[PAYLOAD_SIZE];
-
-    size_t bytes = fread(payload, sizeof(char), PAYLOAD_SIZE -1, proto->in_file);
+    size_t bytes = fread(proto->data.payload, sizeof(char), PAYLOAD_SIZE -1, proto->in_file);
     if (bytes != PAYLOAD_SIZE -1 && bytes != proto->tfr_bytes)
         exit_err_state(proto, PS_BAD_READ, __LINE__);
     
-    strncpy(data->payload, payload, PAYLOAD_SIZE -1);
-    data->payload[PAYLOAD_SIZE-1] = '\0';
+    proto->data.payload[PAYLOAD_SIZE-1] = '\0';
 
     int trailling = PAYLOAD_SIZE - proto->tfr_bytes;
     while (trailling > 0){
-        data->payload[PAYLOAD_SIZE -trailling] = '\0';
+        proto->data.payload[PAYLOAD_SIZE - trailling] = '\0';
         trailling--;
     }
     proto->tfr_bytes -= bytes;
-    data->file_data = bytes;
+    proto->data.file_data = bytes;
     return;
 }
 
@@ -172,15 +167,12 @@ void send_data(protocol_t* proto) {
     if (proto->curr_retry > proto->max_retries)
         exit_err_state(proto, PS_EXCEED_RETRY, __LINE__);
 
-    int sockfd = proto->sockfd;
-    struct sockaddr_in server = proto->server;
     proto->data.checksum = checksum(proto->data.payload, is_corrupted(proto->loss_prob));
 
-    ssize_t bytes = sendto(sockfd, &proto->data, sizeof(segment_t),0,
-        (struct sockaddr*) &server, sizeof(struct sockaddr_in));
+    ssize_t bytes = sendto(proto->sockfd, &proto->data, sizeof(segment_t),0,
+        (struct sockaddr*) &proto->server, sizeof(struct sockaddr_in));
     if (bytes != sizeof(segment_t))
         exit_err_state(proto, PS_BAD_SEND, __LINE__-3);
-    
     return;
 }
 
@@ -276,12 +268,12 @@ void send_file_with_timeout(protocol_t* proto) {
             proto->curr_retry++; 
             send_data(proto);
             
+            proto->resent_segments++;
 
             setnlog_protocol(proto, PS_ACK_WAIT, __LINE__);
 
             nbytes = recvfrom(proto->sockfd, &proto->ack, proto->seg_size,
             0, (struct sockaddr *) &server, &server_size);
-            proto->resent_segments++;
         }            
         
 
@@ -317,7 +309,6 @@ void send_file_with_timeout(protocol_t* proto) {
  */
 bool send_metadata(protocol_t* proto) {     
     // test is succesful, running client directly is unsuccessful
-    int sockfd = proto->sockfd;
 
     struct sockaddr_in server = proto->server;
     metadata_t finf;
@@ -325,7 +316,7 @@ bool send_metadata(protocol_t* proto) {
     strncpy(finf.name, proto->out_fname, MAX_FILENAME_SIZE);
     
     finf.size = proto->fsize;
-    ssize_t bytes = sendto(sockfd, &finf, sizeof(metadata_t), 0, 
+    ssize_t bytes = sendto(proto->sockfd, &finf, sizeof(metadata_t), 0, 
                          (struct sockaddr*) &server, 
                          sizeof(struct sockaddr_in));
                         
@@ -342,12 +333,10 @@ bool send_metadata(protocol_t* proto) {
 void set_socket_timeout(protocol_t* proto) {    
     proto->src_file = __FILE__;
     struct timeval tout;
-    memset(&tout, 0, sizeof(struct timeval));
     tout.tv_sec = proto->timeout_sec;
     tout.tv_usec = 0;
-    int sockopt = setsockopt(proto->sockfd, SOL_SOCKET,SO_RCVTIMEO , &tout , sizeof(struct sockaddr_in));
 
-    if (sockopt < 0){
+    if (setsockopt(proto->sockfd, SOL_SOCKET,SO_RCVTIMEO , &tout , sizeof(struct sockaddr_in)) < 0){
         exit_err_state(proto, PS_BAD_SOCKTOUT, __LINE__);
     }
     return;
@@ -368,8 +357,6 @@ void set_udp_socket(protocol_t* proto) {
     if (proto->server_port < PORT_MIN || proto->server_port > PORT_MAX) 
         proto->sockfd = -1;
     proto->sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (proto->sockfd < 0) 
-        proto->sockfd = -1; 
    
     if (!inet_aton(proto->server_addr, &proto->server.sin_addr)) {
         close(proto->sockfd); 
