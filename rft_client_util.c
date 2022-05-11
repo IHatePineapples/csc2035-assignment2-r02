@@ -2,6 +2,8 @@
  * Replace the following string of 0s with your student number
  * 000000000
  */
+#include <asm-generic/errno-base.h>
+#include <asm-generic/errno.h>
 #include <asm-generic/socket.h>
 #include <bits/types/struct_timeval.h>
 #include <stdio.h>
@@ -166,18 +168,14 @@ void read_data(protocol_t* proto) {
  *      detects an error when sending an ACK
  */
 void send_data(protocol_t* proto) {
-    if (proto->resent_segments > proto->max_retries)
+    if (proto->curr_retry > proto->max_retries)
         exit_err_state(proto, PS_EXCEED_RETRY, __LINE__);
 
-    segment_t data = proto->data;
     int sockfd = proto->sockfd;
     struct sockaddr_in server = proto->server;
-    data.checksum = checksum(data.payload, strncmp(proto->tfr_mode, NORMAL_TFR_MODE,2) != 0);
-    if (strncmp(proto->tfr_mode,TIMEOUT_TFR_MODE,TFR_MODE_SIZE) == TFR_MODE_SIZE
-    && proto->loss_prob > (float) ((double)rand()/(double)RAND_MAX))
-        data.checksum--;
+    proto->data.checksum = checksum(proto->data.payload, is_corrupted(proto->loss_prob));
 
-    ssize_t bytes = sendto(sockfd, &data, sizeof(segment_t),0,
+    ssize_t bytes = sendto(sockfd, &proto->data, sizeof(segment_t),0,
         (struct sockaddr*) &server, sizeof(struct sockaddr_in));
     if (bytes != sizeof(segment_t))
         exit_err_state(proto, PS_BAD_SEND, __LINE__-3);
@@ -240,7 +238,69 @@ void send_file_normal(protocol_t* proto) {
  *
  * See documentation in rft_client_util.h and the assignment specification
  */
-void send_file_with_timeout(protocol_t* proto) {   
+void send_file_with_timeout(protocol_t* proto) {
+    
+    set_socket_timeout(proto);
+    
+    proto->src_file = __FILE__;
+    
+    setnlog_protocol(proto, PS_START_SEND, __LINE__);
+    
+    while (proto->tfr_bytes) {
+        read_data(proto);
+        
+        proto->state = PS_DATA_SEND;
+        proto->curr_retry = 0;
+        
+        send_data(proto);
+        
+        proto->total_segments++;
+        proto->total_file_data += proto->data.file_data;
+        
+        setnlog_protocol(proto, PS_ACK_WAIT, __LINE__);
+ 
+        init_segment(proto, ACK_SEG, false);        
+        socklen_t server_size = proto->sockaddr_size;
+        struct sockaddr_in server;
+        memset(&server, 0, server_size);
+
+        ssize_t nbytes = recvfrom(proto->sockfd, &proto->ack, proto->seg_size,
+            0, (struct sockaddr *) &server, &server_size);
+        
+        while (nbytes == -1 && errno == EWOULDBLOCK){
+            setnlog_protocol(proto, PS_NO_ACK, __LINE__);
+            setnlog_protocol(proto, PS_DATA_RESEND, __LINE__);
+            proto->state = PS_DATA_RESEND;
+
+            proto->curr_retry++; 
+            send_data(proto);
+            
+
+            setnlog_protocol(proto, PS_ACK_WAIT, __LINE__);
+
+            nbytes = recvfrom(proto->sockfd, &proto->ack, proto->seg_size,
+            0, (struct sockaddr *) &server, &server_size);
+            proto->resent_segments++;
+        }            
+        
+
+        if (nbytes != proto->seg_size)
+            exit_err_state(proto, PS_BAD_ACK, __LINE__);
+        
+        if (proto->data.sq != proto->ack.sq)
+            exit_err_state(proto, PS_BAD_ACK_SQ, __LINE__);
+
+        proto_state state = verify_server(proto, &server, server_size);
+        if (proto->state != state)
+            exit_err_state(proto, state, __LINE__);
+
+        setnlog_protocol(proto, PS_ACK_RECV, __LINE__);
+
+        proto->data.sq++;
+    }
+
+    proto->state = proto->fsize ? PS_TFR_COMPLETE : PS_EMPTY_FILE;
+    
     return;
 }
 
