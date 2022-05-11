@@ -168,6 +168,7 @@ void read_data(protocol_t* proto) {
  *      detects an error when sending an ACK
  */
 void send_data(protocol_t* proto) {
+    proto->src_file = __FILE__;
     if (proto->curr_retry > proto->max_retries)
         exit_err_state(proto, PS_EXCEED_RETRY, __LINE__);
 
@@ -339,6 +340,7 @@ bool send_metadata(protocol_t* proto) {
  * See documentation in rft_client_util.h and the assignment specification
  */
 void set_socket_timeout(protocol_t* proto) {    
+    proto->src_file = __FILE__;
     struct timeval tout;
     memset(&tout, 0, sizeof(struct timeval));
     tout.tv_sec = proto->timeout_sec;
