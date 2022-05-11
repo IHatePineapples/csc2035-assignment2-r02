@@ -166,6 +166,20 @@ void read_data(protocol_t* proto) {
  *      detects an error when sending an ACK
  */
 void send_data(protocol_t* proto) {
+    if (proto->resent_segments > proto->max_retries)
+        exit_err_state(proto, PS_EXCEED_RETRY, __LINE__);
+
+    segment_t data = proto->data;
+    int sockfd = proto->sockfd;
+    struct sockaddr_in server = proto->server;
+    data.checksum = checksum(data.payload, strncmp(proto->tfr_mode, NORMAL_TFR_MODE,2) != 0);
+
+
+    ssize_t bytes = sendto(sockfd, &data, sizeof(segment_t),0,
+        (struct sockaddr*) &server, sizeof(struct sockaddr_in));
+    if (bytes != sizeof(segment_t))
+        exit_err_state(proto, PS_BAD_SEND, __LINE__-3);
+    
     return;
 }
 
